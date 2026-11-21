@@ -60,8 +60,6 @@ EOF
             }
         }
 
-
-
         stage('Code Analysis') {
             steps {
                 sh '''
@@ -77,7 +75,6 @@ EOF
                 '''
             }
         }
-
 
         stage('Plot Code Analysis Report') {
             steps {
@@ -215,7 +212,6 @@ EOF
             }
         }
 
-
         stage('Database Migration') {
             steps {
                 sh '''
@@ -254,6 +250,55 @@ EOF
                 '''
             }
         }
+
+        stage('Package Artifact') {
+            steps {
+                sh '''
+                    set -eu
+                    rm -f php-todo.zip
+                    zip -qr php-todo.zip . \
+                        -x ".git/*" \
+                           ".env" \
+                           ".env.*" \
+                           "vendor/*" \
+                           "build/*" \
+                           "php-todo.zip" \
+                           "Jenkinsfile.repair-backup" \
+                           "storage/logs/*" \
+                           "storage/framework/cache/*" \
+                           "storage/framework/sessions/*" \
+                           "storage/framework/views/*" \
+                           "bootstrap/cache/*.php"
+
+                    test -s php-todo.zip
+                    ls -lh php-todo.zip
+                '''
+            }
+        }
+
+        stage('Upload Artifact to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-deployer-credentials',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASSWORD'
+                )]) {
+                    sh '''
+                        set -eu
+
+                        test -s php-todo.zip
+
+                        curl --fail --show-error --silent \
+                            --user "$NEXUS_USER:$NEXUS_PASSWORD" \
+                            --upload-file php-todo.zip \
+                            "https://nexus.prewebsite.online/repository/php-todo-artifacts/php-todo-${BUILD_NUMBER}.zip"
+
+                        echo "Artifact uploaded successfully to Nexus."
+                    '''
+                }
+            }
+        }
+
     }
 
     post {
