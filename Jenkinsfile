@@ -298,7 +298,16 @@ EOF
                 }
             }
         }
-
+        stage('Deploy to Dev Environment') {
+            steps {
+                build job: 'StegHub-CI-CD-Real',
+                    parameters: [
+                        string(name: 'inventory', value: 'dev')
+                    ],
+                    propagate: true,
+                    wait: true
+            }
+        }
     }
 
     post {
